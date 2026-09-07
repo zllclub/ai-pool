@@ -14,10 +14,11 @@ npm run tauri dev
 - macOS：安装 Xcode Command Line Tools（`xcode-select --install`），首次启动允许访问应用自己的 Keychain 条目。
 - Windows：安装 Microsoft C++ Build Tools、WebView2，使用 Credential Manager。
 - Linux：安装 WebKitGTK 4.1 等 Tauri 系统依赖，以及运行中的 Secret Service（GNOME Keyring / KWallet 的 Secret Service 接口）、D-Bus。系统凭据服务不可用时明确报错，**不会退回明文凭据库**。
-- `npm run dev` 仅启动 Vite，浏览器预览不具有后端能力；必须通过 Tauri 启动执行真实操作。
+- `npm run dev` 或 `npm run tauri dev` 启动桌面应用。`npm run dev:frontend` 仅启动 Vite，浏览器预览不具有后端能力。
+- Tauri 的 `beforeDevCommand` / `beforeBuildCommand` 仅调用 `dev:frontend` / `build:frontend`，不能调用会再次启动 Tauri 的 `dev` / `build`，否则会递归启动。
 
 ```bash
-npm run build
+npm run build:frontend
 cargo test --manifest-path src-tauri/Cargo.toml
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 # 编译桌面可执行文件（第一版未启用安装包签名/分发）

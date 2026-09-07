@@ -4,9 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "tauri": "tauri"
+    "dev": "tauri dev",
+    "dev:frontend": "vite",
+    "build": "tauri build",
+    "build:frontend": "tsc --noEmit && vite build",
+    "build:dmg": "tauri build --bundles dmg",
+    "tauri": "tauri",
+    "icon": "pnpm tauri icon app-icon.png"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.8.0",
