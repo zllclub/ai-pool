@@ -1,6 +1,6 @@
 # Codex Accounts
 
-本地 Codex OAuth 多账号工作台。Tauri 2 + Rust + React 19 / TypeScript + Tailwind CSS 4 + Vite，不使用 Electron。
+本地 Codex OAuth 多账号工作台。Tauri 2 + Rust + React 19 / TypeScript + Tailwind CSS 4 + Vite
 
 ## 运行
 

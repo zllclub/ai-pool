@@ -14,6 +14,7 @@ export function AccountsPage() {
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(Date.now);
   const [query, setQuery] = useState('');
+  const [deleteCandidate, setDeleteCandidate] = useState<CodexAccount | null>(null);
   const running = useRef(false);
   const generation = useRef(0);
   const reload = useCallback(async () => {
@@ -49,7 +50,7 @@ export function AccountsPage() {
     } finally { setLogin(false); }
   }, []);
   const action = useCallback((kind: AccountAction, account: CodexAccount) => {
-    if (kind === 'delete' && !window.confirm(`删除 ${account.email ?? account.accountId}？\n账号库中的凭据将清除。Codex / Pi 已写入的认证不删除、不远程撤销；当前账号会变为未管理状态。`)) return;
+    if (kind === 'delete') { setDeleteCandidate(account); return; }
     void execute(async () => {
       setErrors(prev => { const next = { ...prev }; delete next[account.id]; return next; });
       try {
@@ -59,7 +60,6 @@ export function AccountsPage() {
           case 'pi': await api.switchPi(account.id); setNotice('Pi Agent 认证文件已切换；已有会话请重启。'); break;
           case 'both': await api.switchBoth(account.id); setNotice('Codex 和 Pi Agent 认证文件均已切换。'); break;
           case 'reauthorize': await doLogin(account.id); break;
-          case 'delete': await api.remove(account.id); setNotice('账号已从加密凭据库删除。'); break;
         }
       } catch (e) { setErrors(prev => ({ ...prev, [account.id]: appError(e) })); throw e; }
     });
@@ -85,5 +85,9 @@ export function AccountsPage() {
       {loading ? <div className="empty">正在连接本地凭据库…</div> : visible.length ? <div className="accounts-grid">{visible.map(a => <AccountCard key={a.id} account={a} codex={runtimes[0]?.managedId === a.id} pi={runtimes[1]?.managedId === a.id} busy={busy} error={errors[a.id]} now={now} onAction={action} />)}</div> : <div className="empty"><div className="empty-icon">＋</div><h2>{query ? '没有匹配的账号' : '让每个账号，各就其位。'}</h2><p>{query ? '尝试搜索其他 Email 或账号 ID。' : '添加 Codex OAuth 账号，或导入上方检测到的本地账号。'}</p>{!query ? <button disabled={busy} onClick={() => void execute(() => doLogin())}>添加第一个账号 ↗</button> : null}</div>}
       <footer className="page-footer"><span>⌁ Token 仅在 Rust 后端处理</span><span>额度为缓存快照 · 切换前建议暂停运行中的 Agent</span></footer>
     </main>
+    {deleteCandidate ? <div className="modal-overlay"><section className="modal" role="dialog" aria-modal="true" aria-labelledby="delete-title" onKeyDown={e => {
+      if (e.key === 'Escape') setDeleteCandidate(null);
+      if (e.key === 'Tab') { const buttons = e.currentTarget.querySelectorAll('button'); const first = buttons[0]; const last = buttons[buttons.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } }
+    }}><h2 id="delete-title">删除这个账号？</h2><strong>{deleteCandidate.email ?? deleteCandidate.accountId}</strong><p>管理器中的账号和凭据将清除。Codex / Pi 的认证文件不会删除，也不会远程撤销授权；当前账号将变为未管理状态。</p><div><button autoFocus onClick={() => setDeleteCandidate(null)}>取消</button><button className="danger" onClick={() => { const id = deleteCandidate.id; setDeleteCandidate(null); void execute(async () => { await api.remove(id); setNotice('账号已从加密凭据库删除。'); }); }}>确认删除</button></div></section></div> : null}
   </div>;
 }
