@@ -10,7 +10,7 @@
     "build:frontend": "tsc --noEmit && vite build",
     "build:dmg": "tauri build --bundles dmg",
     "tauri": "tauri",
-    "icon": "tauri icon app-icon.png"
+    "icon": "tauri icon app-icon.jpg"
   },
   "dependencies": {
     "@arco-design/web-react": "^2.66.16",
