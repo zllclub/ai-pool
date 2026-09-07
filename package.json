@@ -10,7 +10,7 @@
     "build:frontend": "tsc --noEmit && vite build",
     "build:dmg": "tauri build --bundles dmg",
     "tauri": "tauri",
-    "icon": "pnpm tauri icon app-icon.png"
+    "icon": "tauri icon app-icon.png"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.8.0",

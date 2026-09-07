@@ -11,9 +11,10 @@ npm install
 npm run tauri dev
 ```
 
-- macOS：安装 Xcode Command Line Tools（`xcode-select --install`），首次启动允许访问应用自己的 Keychain 条目。
-- Windows：安装 Microsoft C++ Build Tools、WebView2，使用 Credential Manager。
-- Linux：安装 WebKitGTK 4.1 等 Tauri 系统依赖，以及运行中的 Secret Service（GNOME Keyring / KWallet 的 Secret Service 接口）、D-Bus。系统凭据服务不可用时明确报错，**不会退回明文凭据库**。
+- macOS：安装 Xcode Command Line Tools（`xcode-select --install`）。
+- Windows：安装 Microsoft C++ Build Tools、WebView2。
+- Linux：安装 WebKitGTK 4.1 等 Tauri 系统依赖。
+- 凭据按用户选择以明文 JSON 保存；不使用 Keychain / Credential Manager / Secret Service，也不需要解锁系统凭据服务。
 - `npm run dev` 或 `npm run tauri dev` 启动桌面应用。`npm run dev:frontend` 仅启动 Vite，浏览器预览不具有后端能力。
 - Tauri 的 `beforeDevCommand` / `beforeBuildCommand` 仅调用 `dev:frontend` / `build:frontend`，不能调用会再次启动 Tauri 的 `dev` / `build`，否则会递归启动。
 
@@ -21,9 +22,19 @@ npm run tauri dev
 npm run build:frontend
 cargo test --manifest-path src-tauri/Cargo.toml
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-# 编译桌面可执行文件（第一版未启用安装包签名/分发）
+# 编译桌面应用及系统安装包（尚未配置签名/公证）
 npm run tauri build
+# macOS 仅生成 .app
+npm run tauri build -- --bundles app
+# 从根目录 app-icon.png 重新生成桌面图标
+npm run icon
 ```
+
+## 界面与应用图标
+
+默认使用明亮主题，不跟随系统深色模式；Web CSS 与 Tauri 窗口背景/原生主题均显式设为明亮。界面采用浅灰工作区、白色卡片和蓝色操作按钮，支持最小 740px 窗口布局。
+
+根目录 `app-icon.png` 是原始品牌图，`src-tauri/icons/` 包含其生成的 PNG / ICNS / ICO，Tauri bundle 已明确配置这些图标。侧栏使用 `src/assets/app-icon.png`，网页图标使用 `public/favicon.png`。macOS 打包应用为 `src-tauri/target/release/bundle/macos/AI Pool.app`；验证 Dock / Finder 图标请启动打包后的 `.app`，开发模式的进程图标可能受系统缓存影响。
 
 ## 使用
 
@@ -62,7 +73,7 @@ src-tauri/src/
   runtime/codex.rs               Codex auth.json 格式
   runtime/pi_agent.rs            仅合并 openai-codex 节点
   switch/service.rs              全局切换锁、全部准备、提交、条件回滚
-  storage/secure_store.rs         SecureStore + 系统密钥 + 加密凭据库
+  storage/secure_store.rs         可替换 SecureStore 接口 + PlaintextStore 明文文件实现
   storage/atomic.rs               同目录临时文件、fsync、原子替换
   storage/config.rs               标准路径 / 后续普通 UI 配置边界
   commands/                      Tauri command 层
@@ -76,14 +87,18 @@ src-tauri/src/
 ## 凭据安全
 
 - 应用数据目录由 Tauri 提供，标识为 `dev.local.codex-accounts`。macOS 通常为 `~/Library/Application Support/dev.local.codex-accounts/`。
-- 系统 Keychain / Credential Manager / Secret Service 保存随机 256-bit 主密钥（service `dev.local.codex-accounts`，entry `vault-key-v1`）。
-- `credentials.v1.enc` 使用 XChaCha20-Poly1305 加密；每次写入使用独立随机 192-bit nonce。账号库不与普通 UI 配置混合，无明文 fallback。
+- 当前凭据库为 `credentials.v1.json`，账号及 access/refresh/id token **以明文保存**，与普通 UI 配置分离。macOS 完整路径通常是 `~/Library/Application Support/dev.local.codex-accounts/credentials.v1.json`。
+- 不使用系统凭据服务、不加密、不生成主密钥；`SecureStore` 仅为保留的可替换接口名称，不表示当前存储具备加密能力。
+- 本机同用户进程、管理员及拿到此文件/备份的人可能使用这些凭据。请勿上传到 Git、网盘、日志或分享给他人；文件权限不等于加密。
 - Unix 下应用私有目录为 `0700`，临时文件/替换后的认证文件为 `0600`。Windows 使用用户目录继承的 ACL，请勿将用户目录开放给其他用户。
-- 敏感 Credentials 不实现 Debug，释放时 zeroize；序列化明文和主密钥使用 Zeroizing。未接入普通 Token/HTTP body 日志，错误仅包含固定信息、HTTP 状态码或路径/OS 错误类别。其他临时 JSON/HTTP 缓冲区不承诺内存完全清零。
+- 敏感 Credentials 不实现 Debug，释放时 zeroize；读取及序列化明文使用 Zeroizing。未接入普通 Token/HTTP body 日志，错误仅包含固定信息、HTTP 状态码或路径/OS 错误类别。其他临时 JSON/HTTP 缓冲区不承诺内存完全清零。
 - 凭据只请求 OpenAI OAuth / ChatGPT usage 服务；不上传到自建服务器，不包含遥测。禁止 HTTP 跟随重定向，避免凭据被带到其他站点。
-- 操作系统认证文件按 CLI 约定仍然是明文。这是运行环境兼容需求，不代表加密账号库失效；本机同用户进程仍可能读取运行环境文件。
+- Codex / Pi 运行环境认证文件同样按 CLI 约定保存为明文，切换仍通过 Rust 校验 JSON、临时文件和原子替换完成。
 - 不记录历史明文 auth 备份；正常失败时临时文件自动删除。强制终止进程可能留下 0600 临时文件，需要在对应目录手动确认清理。SSD / 文件系统快照不提供安全擦除保证。
-- 请勿只删除 Keychain 密钥后保留加密库，这会导致无法解密。完整重置需同时处理应用数据目录与应用密钥；此操作会永久丢失管理器账号。
+
+### 从旧版加密存储升级
+
+按用户选择，新版启动并成功加载明文库后，直接删除应用目录中的旧 `credentials.v1.enc`，不备份、不解密、不显示迁移提示；旧库独有的账号数据将丢失，需要重新授权或从 Codex / Pi 导入。清理只针对该文件，不影响 `credentials.v1.json` 或运行环境认证文件。程序不访问 Keychain，也不会读取或删除旧系统密钥。
 
 ## Token 生命周期与并发
 
@@ -109,7 +124,8 @@ src-tauri/src/
 
 - `oauth/protocol.rs`：OpenAI Codex public client ID、授权和 Token endpoint、JWT claim 路径；`oauth/login.rs`：授权参数。
 - `quota/codex.rs`：`https://chatgpt.com/backend-api/wham/usage` 及 `Authorization` / `ChatGPT-Account-Id` / `OpenAI-Beta` headers。
-- 额度 `used_percent = 35` 显示剩余 65%；空窗口显示未知，不虚构为 100%。已知窗口秒数不是 5H/Weekly 时返回 schema 错误而不是错标窗口。重置时间转毫秒。
+- 额度 `used_percent = 35` 显示剩余 65%。按 `limit_window_seconds` 识别窗口，而不是假定 primary=5H / secondary=Weekly；只有周额度时只显示 Weekly，缺失/null/空窗口不报错。其他时长按实际天/小时/分钟展示，未返回时长时显示「主窗口/次窗口」。没有任何窗口时显示「接口未提供额度窗口」，不推断成耗尽或无限额度。百分比暂缺显示未知；无效类型或超范围数值仍报 schema 错误。重置时间转毫秒。
+- 新额度结构包含 `windows` 列表，同时保留旧的 5H/Weekly 字段；旧本地缓存可继续读取，刷新成功后自动更新为新结构。
 - `runtime/codex.rs` / `runtime/pi_agent.rs`：运行环境认证格式。
 
 这些接口不是稳定公共 API，可能受到账号权限、地区、计划及上游修改影响。JWT 只解码作元数据，不把未校验 JWT 当身份验证证明；真正 token 交换通过 OpenAI HTTPS 服务。导入本地账号同样不意味着其凭据一定有效。
@@ -122,6 +138,6 @@ src-tauri/src/
 
 ## 验证范围
 
-离线测试覆盖 state/重复参数、额度 schema 与百分比、Pi Provider 保留、原子替换、双文件失败回滚/拒绝覆盖外部修改、并发刷新单次 rotation、rotation 落盘失败重试、并发切换、独立运行环境、删除回退、CLI 新 Token 回写、IPC DTO 不泄露 Token。
+离线测试覆盖只有周额度、窗口倒置/缺失/空值、非标准时长、旧额度缓存兼容、明文凭据持久化/重载/删除、0600 权限、符号链接拒绝、旧加密文件清理及重复执行安全、state/重复参数、额度 schema 与百分比、Pi Provider 保留、原子替换、双文件失败回滚/拒绝覆盖外部修改、并发刷新单次 rotation、rotation 落盘失败重试、并发切换、独立运行环境、删除回退、CLI 新 Token 回写、IPC DTO 不泄露 Token。
 
 真实 OpenAI OAuth 登录、实际账号额度以及 CLI 消费新认证文件需要用户授权后验收，离线测试不能替代这些验证。macOS 为当前编译验证环境；Windows/Linux 需要各平台依赖及实机验证。

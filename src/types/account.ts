@@ -1,5 +1,10 @@
 // Deliberately excludes ALL credentials. Rust alone owns the token lifecycle.
+export interface QuotaWindow {
+  id: string; label: string; limitWindowSeconds: number | null;
+  remaining: number | null; resetAt: number | null;
+}
 export interface AccountQuota {
+  windows?: QuotaWindow[] | null;
   fiveHourRemaining: number | null; weeklyRemaining: number | null;
   fiveHourResetAt: number | null; weeklyResetAt: number | null; updatedAt: number;
 }

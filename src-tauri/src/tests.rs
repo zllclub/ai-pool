@@ -200,6 +200,41 @@ async fn incoming_cli_rotation_is_saved_without_network_refresh() {
     );
 }
 #[tokio::test]
+async fn plaintext_credentials_survive_restart_and_delete_clears_disk() {
+    use crate::storage::secure_store::{PlaintextStore, CREDENTIALS_FILE};
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join(CREDENTIALS_FILE);
+    let repo = Repository::new(Box::new(PlaintextStore::open(path.clone()).unwrap())).unwrap();
+    repo.update(|all| {
+        all.push(account("fixture", false));
+        Ok(())
+    })
+    .await
+    .unwrap();
+    let saved: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    assert_eq!(saved[0]["credentials"]["refreshToken"], "rotated");
+    drop(repo);
+    let reopened = Repository::new(Box::new(PlaintextStore::open(path.clone()).unwrap())).unwrap();
+    assert_eq!(
+        reopened
+            .get("fixture")
+            .await
+            .unwrap()
+            .credentials
+            .refresh_token,
+        "rotated"
+    );
+    reopened
+        .update(|all| {
+            all.clear();
+            Ok(())
+        })
+        .await
+        .unwrap();
+    assert_eq!(std::fs::read(path).unwrap(), b"[]");
+}
+
+#[tokio::test]
 async fn dto_cannot_leak_credentials_and_failed_delete_is_rolled_back() {
     let (_d, s, _, fail) = setup(false).await;
     let text = serde_json::to_string(&s.list().await).unwrap();

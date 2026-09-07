@@ -1,3 +1,5 @@
+import { Icon } from './Icon';
+
 function resetLabel(reset: number | null | undefined, now: number) {
   if (reset == null) return '重置时间未知';
   const minutes = Math.ceil((reset - now) / 60_000);
@@ -13,6 +15,6 @@ export function QuotaBar({ label, value, reset, now }: { label: string; value: n
     <div className="progress" role="progressbar" aria-label={`${label} 剩余`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={remaining ?? undefined} aria-valuetext={remaining == null ? '暂无数据' : `${remaining}%`}>
       <div style={{ width: `${remaining ?? 0}%` }} className={remaining != null && remaining < 10 ? 'low' : ''} />
     </div>
-    <div className="reset" title={reset == null ? undefined : new Date(reset).toLocaleString()}>{resetLabel(reset, now)}</div>
+    <div className="reset" title={reset == null ? undefined : new Date(reset).toLocaleString()}><Icon name="clock" size={12}/>{resetLabel(reset, now)}</div>
   </div>;
 }

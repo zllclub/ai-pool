@@ -30,8 +30,11 @@ fn initialize(app: &tauri::App) -> Result<Arc<AccountService>> {
         .map_err(|e| AppError::io(&lock_path, e))?;
     fs2::FileExt::try_lock_exclusive(&instance)
         .map_err(|_| AppError::new("INSTANCE_BUSY", "另一个账号管理器正在运行，请关闭重复窗口"))?;
-    let store = storage::secure_store::EncryptedStore::open(root.join("credentials.v1.enc"))?;
+    let store = storage::secure_store::PlaintextStore::open(
+        root.join(storage::secure_store::CREDENTIALS_FILE),
+    )?;
     let repo = Repository::new(Box::new(store))?;
+    storage::secure_store::remove_legacy_store(&root)?;
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(30))
         .connect_timeout(Duration::from_secs(10))

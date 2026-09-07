@@ -16,11 +16,23 @@ pub struct Credentials {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AccountQuota {
+    // None = legacy cache; Some([]) = successful query with no reported quota windows.
+    #[serde(default)]
+    pub windows: Option<Vec<QuotaWindow>>,
     pub five_hour_remaining: Option<f64>,
     pub weekly_remaining: Option<f64>,
     pub five_hour_reset_at: Option<i64>,
     pub weekly_reset_at: Option<i64>,
     pub updated_at: i64,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuotaWindow {
+    pub id: String,
+    pub label: String,
+    pub limit_window_seconds: Option<i64>,
+    pub remaining: Option<f64>,
+    pub reset_at: Option<i64>,
 }
 // The ONLY account DTO exposed over IPC. Credentials are a separate Rust-only type.
 #[derive(Debug, Clone, Serialize, Deserialize)]
