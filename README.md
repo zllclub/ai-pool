@@ -1,6 +1,28 @@
-# Codex Accounts
+# AI Pool
 
-本地 Codex OAuth 多账号工作台。Tauri 2 + Rust + React 19 / TypeScript + Tailwind CSS 4 + Vite
+本地 Codex OAuth 多账号管理与额度查看工具，支持在 Codex 和 Pi Agent 之间快速切换账号。
+
+## 功能
+
+- 管理多个 Codex OAuth 账号，查看 5H、Weekly 等额度窗口
+- 一键切换 Codex、Pi Agent，或同时切换两个运行环境
+- 自动刷新全部账号额度，单账号失败不影响其他账号
+- 支持账号额度桌面悬浮、窗口置顶、拖动吸附与展开查看
+- 凭据仅在本机处理，不上传到自建服务器
+
+## 界面预览
+
+### 桌面悬浮
+
+<img src="./public/img1.png" alt="账号额度桌面悬浮窗" width="430" />
+
+### 账号管理
+
+<img src="./public/img2.png" alt="AI Pool 账号管理页面" width="1120" />
+
+## 技术栈
+
+Tauri 2 · Rust · React 19 · TypeScript · Tailwind CSS 4 · Vite
 
 ## 运行
 
@@ -32,6 +54,8 @@ npm run icon
 
 ## 界面与应用图标
 
+UI 使用 `@arco-design/web-react ^2.66.11` 的 Button、Card、Avatar、Dropdown/Menu、Tag、Tooltip、Progress、Input、Alert、Spin、Empty 和 Modal，组件及样式按需导入，统一中文配置。账号菜单支持悬浮/点击，删除采用带焦点锁定的确认弹窗。
+
 默认使用明亮主题，不跟随系统深色模式；Web CSS 与 Tauri 窗口背景/原生主题均显式设为明亮。界面采用浅灰工作区、白色卡片和蓝色操作按钮，支持最小 740px 窗口布局。
 
 根目录 `app-icon.png` 是原始品牌图，`src-tauri/icons/` 包含其生成的 PNG / ICNS / ICO，Tauri bundle 已明确配置这些图标。侧栏使用 `src/assets/app-icon.png`，网页图标使用 `public/favicon.png`。macOS 打包应用为 `src-tauri/target/release/bundle/macos/AI Pool.app`；验证 Dock / Finder 图标请启动打包后的 `.app`，开发模式的进程图标可能受系统缓存影响。
@@ -42,8 +66,9 @@ npm run icon
 2. 登录完成后保存账号、查询额度；额度失败不会丢失已授权账号。相同 `accountId` 不重复导入，请使用「重新授权」。重新授权必须登录同一账号。
 3. 启动及窗口重新获得焦点时识别当前环境，也可点击「识别状态」。未知账号可一键导入。
 4. 「刷新全部额度」最多并行查询 4 个账号，单账号失败不影响其他账号。额度不足/接口异常不会偷偷切换账号。
-5. 分别「设为 Codex」「设为 Pi Agent」，或「同时切换」。切换前建议暂停所有使用这些凭据的 Agent；现有进程可能缓存凭据，需要重启。
-6. 删除只清除管理器账号库内的记录和凭据，不替用户退出正在使用的 CLI，不远程撤销授权。运行环境仍持有其认证副本，界面会显示为「未管理账号」。要完全退出，请另外使用对应 CLI 的 logout。
+5. 点击账号卡片右上角的桌面图标开启悬浮窗；悬浮窗保持置顶，可拖动至屏幕边缘吸附，点击后展开详情。
+6. 分别「设为 Codex」「设为 Pi Agent」，或「同时切换」。切换前建议暂停所有使用这些凭据的 Agent；现有进程可能缓存凭据，需要重启。
+7. 删除只清除管理器账号库内的记录和凭据，不替用户退出正在使用的 CLI，不远程撤销授权。运行环境仍持有其认证副本，界面会显示为「未管理账号」。要完全退出，请另外使用对应 CLI 的 logout。
 
 使用的路径已按更正统一：
 

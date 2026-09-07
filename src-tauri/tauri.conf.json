@@ -10,6 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [{
       "label": "main",
       "title": "AI Pool · Codex Accounts",

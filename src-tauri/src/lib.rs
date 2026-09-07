@@ -9,7 +9,7 @@ mod switch;
 #[cfg(test)]
 mod tests;
 use account::{repository::Repository, service::AccountService};
-use commands::{account::*, quota::*, switch::*, AppState};
+use commands::{account::*, quota::*, switch::*, widget::*, AppState};
 use error::{AppError, Result};
 use std::{sync::Arc, time::Duration};
 use tauri::Manager;
@@ -74,7 +74,11 @@ pub fn run() {
             switch_both,
             get_runtime_status,
             import_current_codex_account,
-            import_current_pi_account
+            import_current_pi_account,
+            show_account_widget,
+            close_account_widget,
+            set_widget_expanded,
+            snap_account_widget
         ])
         .run(tauri::generate_context!())
         .expect("Tauri runtime initialization failed");

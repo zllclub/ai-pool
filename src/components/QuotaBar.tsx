@@ -1,4 +1,6 @@
 import { Icon } from './Icon';
+import Progress from '@arco-design/web-react/es/Progress';
+import Tooltip from '@arco-design/web-react/es/Tooltip';
 
 function resetLabel(reset: number | null | undefined, now: number) {
   if (reset == null) return '重置时间未知';
@@ -12,9 +14,9 @@ export function QuotaBar({ label, value, reset, now }: { label: string; value: n
   return <div className="quota">
     <div className="quota-label">{label}<span>剩余</span></div>
     <div className="quota-value">{remaining == null ? '—' : Math.round(remaining)}{remaining == null ? null : <small>%</small>}</div>
-    <div className="progress" role="progressbar" aria-label={`${label} 剩余`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={remaining ?? undefined} aria-valuetext={remaining == null ? '暂无数据' : `${remaining}%`}>
-      <div style={{ width: `${remaining ?? 0}%` }} className={remaining != null && remaining < 10 ? 'low' : ''} />
+    <div role="progressbar" aria-label={`${label} 剩余`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={remaining ?? undefined} aria-valuetext={remaining == null ? '暂无数据' : `${remaining}%`}>
+      <div aria-hidden="true"><Progress percent={remaining ?? 0} showText={false} strokeWidth={5} color={remaining != null && remaining < 10 ? '#d4a269' : '#6894f5'}/></div>
     </div>
-    <div className="reset" title={reset == null ? undefined : new Date(reset).toLocaleString()}><Icon name="clock" size={12}/>{resetLabel(reset, now)}</div>
+    <Tooltip content={reset == null ? '接口未提供重置时间' : new Date(reset).toLocaleString()}><div className="reset"><Icon name="clock" size={12}/>{resetLabel(reset, now)}</div></Tooltip>
   </div>;
 }
