@@ -54,13 +54,40 @@ fn initialize(app: &tauri::App) -> Result<Arc<AccountService>> {
         repo, client, quota, runtimes, instance,
     )))
 }
+fn restore_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            restore_main_window(app);
+        }))
         .setup(|app| {
             let result = initialize(app);
             app.manage(AppState(result));
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if window.label() != "main" {
+                return;
+            }
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let has_widget = window
+                    .app_handle()
+                    .webview_windows()
+                    .keys()
+                    .any(|label| label.starts_with("account-widget-"));
+                if has_widget {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             list_accounts,
@@ -80,6 +107,13 @@ pub fn run() {
             set_widget_expanded,
             snap_account_widget
         ])
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .expect("Tauri runtime initialization failed");
+
+    app.run(|app, event| {
+        #[cfg(target_os = "macos")]
+        if let tauri::RunEvent::Reopen { .. } = event {
+            restore_main_window(app);
+        }
+    });
 }
