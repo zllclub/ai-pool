@@ -15,8 +15,8 @@ export const api = {
   importPi: () => invoke<CodexAccount>('import_current_pi_account'),
   toggleWidget: (accountId: string) => invoke<boolean>('show_account_widget', { accountId }),
   closeWidget: (accountId: string) => invoke<void>('close_account_widget', { accountId }),
-  setWidgetExpanded: (expanded: boolean) => invoke<void>('set_widget_expanded', { expanded }),
-  snapWidget: (side?: 'left' | 'right') => invoke<void>('snap_account_widget', { side: side ?? null }),
+  setWidgetExpanded: (accountId: string, expanded: boolean) => invoke<void>('set_widget_expanded', { accountId, expanded }),
+  snapWidget: (accountId: string, side?: 'left' | 'right') => invoke<void>('snap_account_widget', { accountId, side: side ?? null }),
 };
 export function appError(value: unknown): AppError {
   if (value && typeof value === 'object' && 'code' in value && 'message' in value) return value as AppError;

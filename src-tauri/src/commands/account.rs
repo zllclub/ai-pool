@@ -1,11 +1,11 @@
-use super::AppState;
+use super::{notify_account_data_changed, AppState};
 use crate::{
     account::model::AccountView,
     error::{AppError, Result},
     runtime::RuntimeStatus,
 };
 use serde::Serialize;
-use tauri::State;
+use tauri::{AppHandle, State};
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LoginResult {
@@ -18,6 +18,7 @@ pub async fn list_accounts(state: State<'_, AppState>) -> Result<Vec<AccountView
 }
 #[tauri::command]
 pub async fn start_oauth_login(
+    app: AppHandle,
     state: State<'_, AppState>,
     account_id: Option<String>,
 ) -> Result<LoginResult> {
@@ -28,16 +29,18 @@ pub async fn start_oauth_login(
     let account = s.login.login(&s.client).await?;
     let account = s.add(account, account_id).await?;
     // A quota outage must never discard a successful OAuth login.
-    match s.refresh_quota(&account.id).await {
-        Ok(account) => Ok(LoginResult {
+    let result = match s.refresh_quota(&account.id).await {
+        Ok(account) => LoginResult {
             account,
             quota_error: None,
-        }),
-        Err(e) => Ok(LoginResult {
+        },
+        Err(e) => LoginResult {
             account,
             quota_error: Some(e),
-        }),
-    }
+        },
+    };
+    notify_account_data_changed(&app, Some(&result.account.id));
+    Ok(result)
 }
 #[tauri::command]
 pub async fn cancel_oauth_login(state: State<'_, AppState>) -> Result<()> {
@@ -45,18 +48,34 @@ pub async fn cancel_oauth_login(state: State<'_, AppState>) -> Result<()> {
     Ok(())
 }
 #[tauri::command]
-pub async fn delete_account(state: State<'_, AppState>, account_id: String) -> Result<()> {
-    state.service()?.delete(&account_id).await
+pub async fn delete_account(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    account_id: String,
+) -> Result<()> {
+    state.service()?.delete(&account_id).await?;
+    notify_account_data_changed(&app, Some(&account_id));
+    Ok(())
 }
 #[tauri::command]
 pub async fn get_runtime_status(state: State<'_, AppState>) -> Result<Vec<RuntimeStatus>> {
     Ok(state.service()?.status().await)
 }
 #[tauri::command]
-pub async fn import_current_codex_account(state: State<'_, AppState>) -> Result<AccountView> {
-    state.service()?.import(0).await
+pub async fn import_current_codex_account(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<AccountView> {
+    let account = state.service()?.import(0).await?;
+    notify_account_data_changed(&app, Some(&account.id));
+    Ok(account)
 }
 #[tauri::command]
-pub async fn import_current_pi_account(state: State<'_, AppState>) -> Result<AccountView> {
-    state.service()?.import(1).await
+pub async fn import_current_pi_account(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<AccountView> {
+    let account = state.service()?.import(1).await?;
+    notify_account_data_changed(&app, Some(&account.id));
+    Ok(account)
 }

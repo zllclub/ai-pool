@@ -156,12 +156,16 @@ export function AccountsPage() {
     };
   }, [accountIds, activeIds, refreshMinutes, runScheduledRefresh, startupRefreshed]);
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
+    let unlistenClosed: (() => void) | undefined;
+    let unlistenData: (() => void) | undefined;
     void listen<string>('widget-closed', event => {
       setPinnedAccounts(current => { const next = new Set(current); next.delete(event.payload); return next; });
-    }).then(dispose => { unlisten = dispose; });
-    return () => unlisten?.();
-  }, []);
+    }).then(dispose => { unlistenClosed = dispose; });
+    void listen<string | null>('account-data-changed', () => {
+      void reload().catch(e => setError(appError(e)));
+    }).then(dispose => { unlistenData = dispose; });
+    return () => { unlistenClosed?.(); unlistenData?.(); };
+  }, [reload]);
   const showWidget = useCallback((account: CodexAccount) => {
     void api.toggleWidget(account.id)
       .then(pinned => {

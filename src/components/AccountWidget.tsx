@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { listen } from '@tauri-apps/api/event';
 import { api } from '../services/tauri';
 import { quotaWindows } from '../services/quota';
 import { accountAvatarStyle } from '../services/avatar';
@@ -57,11 +58,18 @@ export function AccountWidget() {
   const changeMode = useCallback(async (next: boolean) => {
     setExpanded(next);
     if (!next) setContextMenu(null);
-    try { await api.setWidgetExpanded(next); } catch { /* Keep the widget usable if resizing fails. */ }
-  }, []);
+    try { await api.setWidgetExpanded(accountId, next); } catch { /* Keep the widget usable if resizing fails. */ }
+  }, [accountId]);
   const close = () => void api.closeWidget(accountId);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void listen<string | null>('account-data-changed', event => {
+      if (event.payload === null || event.payload === accountId) void load();
+    }).then(dispose => { unlisten = dispose; });
+    return () => unlisten?.();
+  }, [accountId, load]);
   useEffect(() => {
     const storage = (event: StorageEvent) => {
       if (event.key === 'quota-refresh-minutes') setMinutes(storedMinutes());
@@ -111,7 +119,7 @@ export function AccountWidget() {
   const updated = account?.quota ? new Date(account.quota.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
   const startDrag = async (target: EventTarget | null, button: number) => {
     if (button !== 0 || (target as HTMLElement).closest('button, .widget-context-menu')) return;
-    try { await getCurrentWindow().startDragging(); await api.snapWidget(); } catch { /* Native drag can be cancelled. */ }
+    try { await getCurrentWindow().startDragging(); await api.snapWidget(accountId); } catch { /* Native drag can be cancelled. */ }
   };
   const openMenu = async (event: React.MouseEvent) => {
     event.preventDefault();
