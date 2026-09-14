@@ -77,7 +77,7 @@ impl AccountService {
                     .all()
                     .await
                     .into_iter()
-                    .find(|a| a.view.account_id == local.view.account_id)
+                    .find(|a| crate::oauth::protocol::same_identity(a, local))
                 {
                     let _token = self.token_lock(&managed.view.id).await;
                     self.reconcile_locked(managed).await?;
@@ -101,7 +101,7 @@ impl AccountService {
             let detected = adapter
                 .detect_current_account(&check)?
                 .ok_or_else(|| AppError::new("RUNTIME_SCHEMA", "写入验证失败"))?;
-            if detected.view.account_id != target.view.account_id {
+            if !crate::oauth::protocol::same_identity(&detected, &target) {
                 return Err(conflict());
             }
             let path = adapter.path().to_owned();

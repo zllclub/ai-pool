@@ -53,17 +53,24 @@ impl TokenRefresher for MockRefresh {
     async fn refresh(&self, old: &Credentials) -> Result<Credentials> {
         self.count.fetch_add(1, Ordering::SeqCst);
         tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-        let id = protocol::account(old.clone(), None)?.view.account_id;
-        Ok(credentials(&id, false))
+        let identity = protocol::account(old.clone(), None)?;
+        let subject = protocol::claims(&old.access_token)?["sub"]
+            .as_str()
+            .unwrap_or(&identity.view.account_id)
+            .to_owned();
+        Ok(credentials_for(&identity.view.account_id, &subject, false))
     }
 }
 fn credentials(id: &str, expired: bool) -> Credentials {
+    credentials_for(id, id, expired)
+}
+fn credentials_for(account_id: &str, subject: &str, expired: bool) -> Credentials {
     let expiry = if expired {
         now() - 10_000
     } else {
         now() + 3_600_000
     };
-    let payload = json!({"exp":expiry/1000,"iat":if expired{1}else{now()/1000},"https://api.openai.com/auth":{"chatgpt_account_id":id},"email":format!("{id}@example.test")});
+    let payload = json!({"sub":subject,"exp":expiry/1000,"iat":if expired{1}else{now()/1000},"https://api.openai.com/auth":{"chatgpt_account_id":account_id},"email":format!("{subject}@example.test")});
     Credentials {
         access_token: format!(
             "e30.{}.signature",
@@ -78,6 +85,9 @@ fn account(id: &str, expired: bool) -> Account {
     let mut a = protocol::account(credentials(id, expired), None).unwrap();
     a.view.id = id.into();
     a
+}
+fn workspace_member(workspace: &str, subject: &str) -> Account {
+    protocol::account(credentials_for(workspace, subject, false), None).unwrap()
 }
 async fn setup(
     expired: bool,
@@ -116,6 +126,38 @@ async fn setup(
     });
     (dir, service, count, fail)
 }
+#[tokio::test]
+async fn same_workspace_members_are_distinct_accounts() {
+    let (_d, s, _, _) = setup(false).await;
+    let first = s
+        .add(workspace_member("team", "user-a"), None)
+        .await
+        .unwrap();
+    let second = s
+        .add(workspace_member("team", "user-b"), None)
+        .await
+        .unwrap();
+    assert_ne!(first.id, second.id);
+
+    let duplicate = s
+        .add(workspace_member("team", "user-a"), None)
+        .await
+        .unwrap_err();
+    assert_eq!(duplicate.code, "ACCOUNT_EXISTS");
+
+    let mismatch = s
+        .add(workspace_member("team", "user-b"), Some(first.id.clone()))
+        .await
+        .unwrap_err();
+    assert_eq!(mismatch.code, "REAUTHORIZE_MISMATCH");
+
+    s.switch(&second.id, &[0]).await.unwrap();
+    assert_eq!(
+        s.status().await[0].managed_id.as_deref(),
+        Some(second.id.as_str())
+    );
+}
+
 #[tokio::test]
 async fn concurrent_queries_refresh_only_once() {
     let (_d, s, count, _) = setup(true).await;

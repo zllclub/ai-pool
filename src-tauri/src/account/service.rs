@@ -69,18 +69,19 @@ impl AccountService {
         self.runtimes
             .iter()
             .map(|r| {
-                let (account_id, error) = match r.read() {
-                    Ok(s) => (s.account.map(|a| a.view.account_id), None),
+                let (local, error) = match r.read() {
+                    Ok(s) => (s.account, None),
                     Err(e) => (None, Some(e)),
                 };
-                let managed_id = all
-                    .iter()
-                    .find(|a| Some(&a.view.account_id) == account_id.as_ref())
-                    .map(|a| a.view.id.clone());
+                let managed_id = local.as_ref().and_then(|local| {
+                    all.iter()
+                        .find(|a| protocol::same_identity(a, local))
+                        .map(|a| a.view.id.clone())
+                });
                 RuntimeStatus {
                     runtime: r.name().into(),
                     path: r.path().display().to_string(),
-                    account_id,
+                    account_id: local.map(|a| a.view.account_id),
                     managed_id,
                     error,
                 }
@@ -96,7 +97,7 @@ impl AccountService {
                 Err(_) => continue,
             }; // unrelated damaged runtimes must not block quota queries
             if let Some(local) = snapshot.account {
-                if local.view.account_id != a.view.account_id
+                if !protocol::same_identity(&local, &a)
                     || (local.credentials.access_token == a.credentials.access_token
                         && local.credentials.refresh_token == a.credentials.refresh_token)
                 {
@@ -137,6 +138,12 @@ impl AccountService {
         if force || a.credentials.expires_at <= now() + 120_000 {
             let c = self.refresher.refresh(&a.credentials).await?;
             let identity = protocol::account(c.clone(), Some(&a.view.account_id))?;
+            if !protocol::same_identity(&a, &identity) {
+                return Err(AppError::new(
+                    "TOKEN_IDENTITY_MISMATCH",
+                    "Token 刷新返回了不同用户的凭据，请重新授权",
+                ));
+            }
             a.credentials = c;
             if identity.view.email.is_some() {
                 a.view.email = identity.view.email;
@@ -195,10 +202,10 @@ impl AccountService {
         if let Some(id) = replace {
             let _lock = self.token_lock(&id).await;
             let old = self.repo.get(&id).await?;
-            if old.view.account_id != a.view.account_id {
+            if !protocol::same_identity(&old, &a) {
                 return Err(AppError::new(
                     "REAUTHORIZE_MISMATCH",
-                    "重新授权登录了不同账号；请使用添加账号",
+                    "重新授权登录了不同用户或工作区；请使用添加账号",
                 ));
             }
             a.view.id = id.clone();
@@ -209,10 +216,10 @@ impl AccountService {
         } else {
             self.repo
                 .update(|all| {
-                    if all.iter().any(|v| v.view.account_id == a.view.account_id) {
+                    if all.iter().any(|v| protocol::same_identity(v, &a)) {
                         return Err(AppError::new(
                             "ACCOUNT_EXISTS",
-                            "账号已经存在，请使用重新授权",
+                            "该用户在当前工作区中已经存在，请使用重新授权",
                         ));
                     }
                     all.push(a.clone());

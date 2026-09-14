@@ -39,6 +39,31 @@ pub fn expiry(token: &str) -> i64 {
         .and_then(|v| v.checked_mul(1000))
         .unwrap_or(0)
 }
+// chatgpt_account_id identifies the selected workspace, not necessarily the person.
+// `sub` is the stable OAuth user identity and allows multiple members of one workspace.
+fn subject(credentials: &Credentials) -> Option<String> {
+    let access = claims(&credentials.access_token).ok();
+    let id = credentials.id_token.as_deref().and_then(|s| claims(s).ok());
+    access
+        .as_ref()
+        .and_then(|v| v["sub"].as_str())
+        .or_else(|| id.as_ref().and_then(|v| v["sub"].as_str()))
+        .filter(|v| !v.is_empty())
+        .map(String::from)
+}
+pub fn same_identity(a: &Account, b: &Account) -> bool {
+    if a.view.account_id != b.view.account_id {
+        return false;
+    }
+    match (subject(&a.credentials), subject(&b.credentials)) {
+        (Some(a), Some(b)) => a == b,
+        // Older/imported tokens may not expose sub. Email is only a compatibility fallback.
+        _ => match (&a.view.email, &b.view.email) {
+            (Some(a), Some(b)) => a.eq_ignore_ascii_case(b),
+            _ => true,
+        },
+    }
+}
 pub fn account(credentials: Credentials, explicit_id: Option<&str>) -> Result<Account> {
     let access = claims(&credentials.access_token)?;
     let id = credentials
