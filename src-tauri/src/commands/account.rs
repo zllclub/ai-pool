@@ -1,4 +1,8 @@
-use super::{notify_account_data_changed, AppState};
+use super::{
+    notify_account_data_changed,
+    request_log::{self, QuotaRequestReason},
+    AppState,
+};
 use crate::{
     account::model::AccountView,
     error::{AppError, Result},
@@ -30,15 +34,21 @@ pub async fn start_oauth_login(
     let account = s.add(account, account_id).await?;
     // A quota outage must never discard a successful OAuth login.
     let result = match s.refresh_quota(&account.id).await {
-        Ok(account) => LoginResult {
-            account,
+        Ok(refreshed) => LoginResult {
+            account: refreshed,
             quota_error: None,
         },
         Err(e) => LoginResult {
-            account,
+            account: account.clone(),
             quota_error: Some(e),
         },
     };
+    request_log::record(
+        &app,
+        &account,
+        QuotaRequestReason::OauthLogin,
+        result.quota_error.as_ref(),
+    );
     notify_account_data_changed(&app, Some(&result.account.id));
     Ok(result)
 }

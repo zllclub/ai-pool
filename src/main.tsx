@@ -15,6 +15,7 @@ import '@arco-design/web-react/es/Tooltip/style/css.js';
 import '@arco-design/web-react/es/Progress/style/css.js';
 import '@arco-design/web-react/es/InputNumber/style/css.js';
 import '@arco-design/web-react/es/Popover/style/css.js';
+import '@arco-design/web-react/es/Switch/style/css.js';
 import '@arco-design/web-react/es/Modal/style/css.js';
 import '@arco-design/web-react/es/Alert/style/css.js';
 import '@arco-design/web-react/es/Spin/style/css.js';

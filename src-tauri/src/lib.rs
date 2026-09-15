@@ -9,7 +9,7 @@ mod switch;
 #[cfg(test)]
 mod tests;
 use account::{repository::Repository, service::AccountService};
-use commands::{account::*, quota::*, switch::*, widget::*, AppState};
+use commands::{account::*, quota::*, request_log::*, switch::*, widget::*, AppState};
 use error::{AppError, Result};
 use std::{sync::Arc, time::Duration};
 use tauri::Manager;
@@ -96,6 +96,7 @@ pub fn run() {
             delete_account,
             refresh_account,
             refresh_all_quotas,
+            list_quota_request_logs,
             switch_codex_account,
             switch_pi_account,
             switch_both,
@@ -103,6 +104,7 @@ pub fn run() {
             import_current_codex_account,
             import_current_pi_account,
             show_account_widget,
+            list_open_account_widgets,
             close_account_widget,
             set_widget_expanded,
             snap_account_widget

@@ -21,6 +21,20 @@ const EDGE_GAP: f64 = 8.0;
 const POSITIONS_FILE: &str = "widget-positions.v1.json";
 static POSITION_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
+#[tauri::command]
+pub fn list_open_account_widgets(app: tauri::AppHandle) -> Vec<String> {
+    app.webview_windows()
+        .into_iter()
+        .filter(|(label, _)| label.starts_with("account-widget-"))
+        .filter_map(|(_, window)| {
+            let url = window.url().ok()?;
+            url.query_pairs()
+                .find(|(key, _)| key == "account")
+                .map(|(_, value)| value.into_owned())
+        })
+        .collect()
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SavedPosition {

@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { AppError, CodexAccount, LoginResult, QuotaResult, RuntimeStatus } from '../types/account';
+import type { AppError, CodexAccount, LoginResult, QuotaRequestLog, QuotaRequestReason, QuotaResult, RuntimeStatus } from '../types/account';
 // Single IPC boundary. No fetch, filesystem plugins, token storage or OAuth URL handling in JS.
 export const api = {
   list: () => invoke<CodexAccount[]>('list_accounts'),
@@ -7,13 +7,15 @@ export const api = {
   login: (accountId?: string) => invoke<LoginResult>('start_oauth_login', { accountId: accountId ?? null }),
   cancel: () => invoke<void>('cancel_oauth_login'),
   remove: (accountId: string) => invoke<void>('delete_account', { accountId }),
-  refresh: (accountId: string) => invoke<CodexAccount>('refresh_account', { accountId }),
-  refreshAll: () => invoke<QuotaResult[]>('refresh_all_quotas'),
+  refresh: (accountId: string, reason: QuotaRequestReason = 'manual') => invoke<CodexAccount>('refresh_account', { accountId, reason }),
+  refreshAll: (reason: QuotaRequestReason = 'manualAll') => invoke<QuotaResult[]>('refresh_all_quotas', { reason }),
+  requestLogs: () => invoke<QuotaRequestLog[]>('list_quota_request_logs'),
   switchCodex: (accountId: string) => invoke<void>('switch_codex_account', { accountId }),
   switchPi: (accountId: string) => invoke<void>('switch_pi_account', { accountId }),
   importCodex: () => invoke<CodexAccount>('import_current_codex_account'),
   importPi: () => invoke<CodexAccount>('import_current_pi_account'),
   toggleWidget: (accountId: string) => invoke<boolean>('show_account_widget', { accountId }),
+  listOpenWidgets: () => invoke<string[]>('list_open_account_widgets'),
   closeWidget: (accountId: string) => invoke<void>('close_account_widget', { accountId }),
   setWidgetExpanded: (accountId: string, expanded: boolean) => invoke<void>('set_widget_expanded', { accountId, expanded }),
   snapWidget: (accountId: string, side?: 'left' | 'right') => invoke<void>('snap_account_widget', { accountId, side: side ?? null }),

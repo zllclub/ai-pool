@@ -1,5 +1,6 @@
 pub mod account;
 pub mod quota;
+pub mod request_log;
 pub mod switch;
 pub mod widget;
 use crate::{account::service::AccountService, error::Result};

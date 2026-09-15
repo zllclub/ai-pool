@@ -13,6 +13,8 @@ import { Trash } from 'reicon-react/icons/Trash';
 import { Pin2 } from 'reicon-react/icons/Pin2';
 import { Desktop } from 'reicon-react/icons/Desktop';
 import { X } from 'reicon-react/icons/X';
+import { ChevronUp } from 'reicon-react/icons/ChevronUp';
+import { History } from 'reicon-react/icons/History';
 
 const brandIcons = {
   terminal: new URL('../assets/codex.svg', import.meta.url).href,
@@ -34,6 +36,8 @@ const icons = {
   pin: Pin2,
   desktop: Desktop,
   close: X,
+  collapse: ChevronUp,
+  logs: History,
 };
 
 type IconName = keyof typeof icons | keyof typeof brandIcons;

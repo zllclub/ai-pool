@@ -1,5 +1,6 @@
 import Tag from '@arco-design/web-react/es/Tag';
-import { Icon } from './Icon';
-export function CurrentAccountBadge({ name }: { name: string }) {
-  return <Tag className="current-badge" color="arcoblue" size="small" bordered={false} icon={<Icon name="check" size={12}/>}>{name} 当前账号</Tag>;
+
+export function CurrentAccountBadge({ name }: { name: 'Codex' | 'Pi Agent' }) {
+  const runtime = name === 'Codex' ? 'codex' : 'pi';
+  return <Tag className={`current-badge ${runtime}`} size="small" bordered={false}>{name} 当前账号</Tag>;
 }
